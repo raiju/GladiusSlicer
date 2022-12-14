@@ -276,9 +276,7 @@ impl SlicePass for MagicOverhangPass {
 
                 // TODO: Smarter detection on whether this feature is necessary
                 if !diff.is_empty() {
-                    error!("Generating overhangs for layer {}", q);
-
-                    slices[q].fill_overhang_aware(&below, &diff, q);
+                    slices[q].fill_overhang_aware(&below, &diff);
                 }
             });
         }

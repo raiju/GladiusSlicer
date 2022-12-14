@@ -104,3 +104,30 @@ pub fn inset_polygon_recursive(
             }
         })
 }
+
+pub fn draw_as_line(
+    poly: &Polygon<f64>,
+    settings: &LayerSettings,
+    move_type: MoveType,
+) -> MoveChain {
+
+    // TODO: Draw line(s) of one layer-width that approximates polygon
+    // TODO: Control overlap & extrusion rate
+
+    let moves = poly
+        .exterior()
+        .0
+        .iter()
+        .circular_tuple_windows::<(_, _)>()
+        .map(|(&_start, &end)| Move {
+            end,
+            move_type,
+            width: settings.layer_width,
+        })
+        .collect();
+
+    MoveChain {
+        start_point: poly.exterior()[0],
+        moves,
+    }
+}

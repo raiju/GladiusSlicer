@@ -321,6 +321,9 @@ pub enum MoveType {
     ///A bridge over open air
     Bridging,
 
+    ///A special type of overhang floating in mid-air
+    FloatingOverhang,
+
     ///Support towers and interface
     Support,
 
@@ -538,6 +541,19 @@ impl MoveChain {
                         });
                     }
                     MoveType::Bridging => {
+                        cmds.push(Command::SetState {
+                            new_state: StateChange {
+                                bed_temp: None,
+                                extruder_temp: None,
+                                fan_speed: None,
+                                movement_speed: Some(settings.speed.bridge),
+                                acceleration: Some(settings.acceleration.bridge),
+                                retract: Some(false),
+                            },
+                        });
+                    }
+                    MoveType::FloatingOverhang => {
+                        // TODO: Figure out extrusion rate?
                         cmds.push(Command::SetState {
                             new_state: StateChange {
                                 bed_temp: None,

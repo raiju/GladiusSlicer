@@ -26,7 +26,7 @@ pub trait Plotter {
     fn fill_solid_subtracted_area(&mut self, other: &MultiPolygon<f64>, layer_count: usize);
     fn fill_solid_bridge_area(&mut self, layer_below: &MultiPolygon<f64>);
     fn fill_solid_top_layer(&mut self, layer_above: &MultiPolygon<f64>, layer_count: usize);
-    fn fill_overhang_aware(&mut self, overhang: &MultiPolygon<f64>, connecting_surface: &MultiPolygon<f64>, layer_count: usize);
+    fn fill_overhang_aware(&mut self, overhang: &MultiPolygon<f64>, connecting_surface: &MultiPolygon<f64>);
     fn generate_skirt(&mut self, convex_polygon: &Polygon<f64>, skirt_settings: &SkirtSettings);
     fn generate_brim(&mut self, entire_first_layer: MultiPolygon<f64>, brim_width: f64);
     fn order_chains(&mut self);
@@ -116,7 +116,7 @@ impl Plotter for Slice {
         self.remaining_area = self.remaining_area.difference_with(&solid_area)
     }
 
-    fn fill_overhang_aware(&mut self, below: &MultiPolygon<f64>, overhang: &MultiPolygon<f64>, layer_count: usize) {
+    fn fill_overhang_aware(&mut self, below: &MultiPolygon<f64>, overhang: &MultiPolygon<f64>) {
         // When dealing with larger overhangs, get tricksy
         let layer_settings = &self.layer_settings;
         let mut connecting_surface = overhang.offset_from(layer_settings.layer_width)
@@ -127,25 +127,7 @@ impl Plotter for Slice {
             for raw_polygon in connecting_surface.0.iter() {
                 let polygon = raw_polygon.simplify(&0.01);
 
-                // TODO: Draw line(s) of one layer-width that approximates polygon
-                // TODO: Control overlap & extrusion rate
-
-                let moves = polygon
-                    .exterior()
-                    .0
-                    .iter()
-                    .circular_tuple_windows::<(_, _)>()
-                    .map(|(&_start, &end)| Move {
-                        end,
-                        move_type: MoveType::OuterPerimeter,
-                        width: layer_settings.layer_width,
-                    })
-                    .collect();
-
-                self.fixed_chains.push(MoveChain {
-                    start_point: polygon.exterior()[0],
-                    moves,
-                });
+                self.fixed_chains.push(draw_as_line(&polygon, layer_settings, MoveType::FloatingOverhang));
             }
 
             connecting_surface = connecting_surface.offset_from(layer_settings.layer_width)
