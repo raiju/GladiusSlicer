@@ -5,6 +5,7 @@ use crate::utils::display_state_update;
 use crate::{Object, PolygonOperations, Settings, Slice};
 use geo::prelude::*;
 use geo::*;
+use log::error;
 use gladius_shared::error::SlicerErrors;
 use gladius_shared::types::PartialInfillTypes;
 use rayon::prelude::*;
@@ -254,6 +255,33 @@ impl SlicePass for TopAndBottomLayersPass {
             .for_each(|(layer_num, slice)| {
                 slice.fill_remaining_area(true, layer_num);
             });
+        Ok(())
+    }
+}
+pub struct MagicOverhangPass {}
+
+impl SlicePass for MagicOverhangPass {
+    fn pass(
+        slices: &mut Vec<Slice>,
+        settings: &Settings,
+        send_messages: bool,
+    ) -> Result<(), SlicerErrors> {
+        if settings.support.is_none() {
+            display_state_update("Generating Moves: Magic overhang pass", send_messages);
+            (1..slices.len()).into_iter().for_each(|q| {
+                let below = slices[q - 1].main_polygon.clone();
+                let current = slices[q].main_polygon.clone();
+
+                let diff = current.difference_with(&below);
+
+                // TODO: Smarter detection on whether this feature is necessary
+                if !diff.is_empty() {
+                    error!("Generating overhangs for layer {}", q);
+
+                    slices[q].fill_overhang_aware(&below, &diff, q);
+                }
+            });
+        }
         Ok(())
     }
 }
