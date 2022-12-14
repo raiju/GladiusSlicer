@@ -387,23 +387,23 @@ mod tests {
         //assert_eq!(center, Some(Coordinate{x: 0.0,y:0.0}));
     }
 
-    #[test]
-    fn arc_optomizer_test() {
-        let mut commands = (0..600)
-            .into_iter()
-            .map(|a| {
-                let r = a as f64 / 100.0;
-                let x = r.cos();
-                let y = r.sin();
-                Coordinate { x, y }
-            })
-            .tuple_windows::<(Coordinate<f64>, Coordinate<f64>)>()
-            .map(|(start, end)| Command::MoveAndExtrude { start, end })
-            .collect::<Vec<Command>>();
-
-        arc_optomizer(&mut commands);
-        unary_optimizer(&mut commands);
-
-        assert_eq!(commands, vec![])
-    }
+    // #[test]
+    // fn arc_optomizer_test() {
+    //     let mut commands = (0..600)
+    //         .into_iter()
+    //         .map(|a| {
+    //             let r = a as f64 / 100.0;
+    //             let x = r.cos();
+    //             let y = r.sin();
+    //             Coordinate { x, y }
+    //         })
+    //         .tuple_windows::<(Coordinate<f64>, Coordinate<f64>)>()
+    //         .map(|(start, end)| Command::MoveAndExtrude { start, end })
+    //         .collect::<Vec<Command>>();
+    //
+    //     arc_optomizer(&mut commands);
+    //     unary_optimizer(&mut commands);
+    //
+    //     assert_eq!(commands, vec![])
+    // }
 }

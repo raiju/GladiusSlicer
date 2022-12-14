@@ -118,6 +118,8 @@ impl Plotter for Slice {
 
     fn fill_overhang_aware(&mut self, below: &MultiPolygon<f64>, overhang: &MultiPolygon<f64>) {
         // When dealing with larger overhangs, get tricksy
+
+        // TODO: Control overlap & extrusion rate
         let layer_settings = &self.layer_settings;
         let mut connecting_surface = overhang.offset_from(layer_settings.layer_width)
             .intersection_with(&below);
@@ -127,7 +129,9 @@ impl Plotter for Slice {
             for raw_polygon in connecting_surface.0.iter() {
                 let polygon = raw_polygon.simplify(&0.01);
 
-                self.fixed_chains.push(draw_as_line(&polygon, layer_settings, MoveType::FloatingOverhang));
+                if let Some(line_moves) = draw_as_line(&polygon, layer_settings, MoveType::FloatingOverhang) {
+                    self.fixed_chains.push(line_moves);
+                }
             }
 
             connecting_surface = connecting_surface.offset_from(layer_settings.layer_width)

@@ -3,6 +3,8 @@ use gladius_shared::types::{Move, MoveChain, MoveType};
 
 use geo::prelude::*;
 use geo::*;
+use geo::coords_iter::CoordsIter;
+use geo::Geometry::Line;
 
 use crate::PolygonOperations;
 use itertools::Itertools;
@@ -84,11 +86,52 @@ pub fn inset_polygon_recursive(
         }
     }
 
-    let mut full_moves = vec![];
+    collapse_move_chains(move_chains)
+}
+
+pub fn draw_as_line(
+    poly: &Polygon<f64>,
+    settings: &LayerSettings,
+    move_type: MoveType,
+) -> Option<MoveChain> {
+
+    // TODO: Draw line(s) of one layer-width that approximates polygon
+
+    // Naive simple approach/cheat to prove out overhang.stl before going to MAT/SAT
+    let boundary = poly.bounding_rect()?;
+
+    if boundary.width() > boundary.height() {
+        Some(MoveChain {
+            start_point: Coordinate { x: boundary.min().x, y: boundary.min().y + boundary.height() / 2.0 },
+            moves: vec![
+                Move {
+                    end: Coordinate { x: boundary.max().x, y: boundary.max().y - boundary.height() / 2.0 },
+                    width: settings.layer_width,
+                    move_type,
+                }
+            ],
+        })
+    } else {
+        Some(MoveChain {
+            start_point: Coordinate { x: boundary.min().x + boundary.width() / 2.0, y: boundary.min().y },
+            moves: vec![
+                Move {
+                    end: Coordinate { x: boundary.max().x - boundary.width() / 2.0, y: boundary.max().y },
+                    width: settings.layer_width,
+                    move_type,
+                }
+            ],
+        })
+    }
+}
+
+fn collapse_move_chains(move_chains: Vec<MoveChain>) -> Option<MoveChain> {
     move_chains
         .get(0)
         .map(|mc| mc.start_point)
         .map(|starting_point| {
+            let mut full_moves = vec![];
+
             for mut chain in move_chains {
                 full_moves.push(Move {
                     end: chain.start_point,
@@ -103,31 +146,4 @@ pub fn inset_polygon_recursive(
                 start_point: starting_point,
             }
         })
-}
-
-pub fn draw_as_line(
-    poly: &Polygon<f64>,
-    settings: &LayerSettings,
-    move_type: MoveType,
-) -> MoveChain {
-
-    // TODO: Draw line(s) of one layer-width that approximates polygon
-    // TODO: Control overlap & extrusion rate
-
-    let moves = poly
-        .exterior()
-        .0
-        .iter()
-        .circular_tuple_windows::<(_, _)>()
-        .map(|(&_start, &end)| Move {
-            end,
-            move_type,
-            width: settings.layer_width,
-        })
-        .collect();
-
-    MoveChain {
-        start_point: poly.exterior()[0],
-        moves,
-    }
 }
