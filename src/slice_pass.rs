@@ -266,7 +266,7 @@ impl SlicePass for MagicOverhangPass {
         settings: &Settings,
         send_messages: bool,
     ) -> Result<(), SlicerErrors> {
-        if settings.support.is_none() {
+        if let Some(magic_overhang) = settings.magic_overhang.clone() {
             display_state_update("Generating Moves: Magic overhang pass", send_messages);
             (1..slices.len()).into_iter().for_each(|q| {
                 let below = slices[q - 1].main_polygon.clone();
@@ -276,7 +276,7 @@ impl SlicePass for MagicOverhangPass {
 
                 // TODO: Smarter detection on whether this feature is necessary
                 if !diff.is_empty() {
-                    slices[q].fill_overhang_aware(&below, &diff);
+                    slices[q].fill_overhang_aware(&below, &diff, &magic_overhang);
                 }
             });
         }

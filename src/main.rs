@@ -24,7 +24,7 @@ use crate::utils::{display_state_update, send_error_message, show_error_message}
 use gladius_shared::error::SlicerErrors;
 use gladius_shared::messages::Message;
 use itertools::Itertools;
-use log::{debug, info, LevelFilter};
+use log::{debug, error, info, LevelFilter};
 use ordered_float::OrderedFloat;
 use rayon::prelude::*;
 use simple_logger::SimpleLogger;
@@ -239,7 +239,7 @@ fn handle_err_or_return<T>(res: Result<T, SlicerErrors>, send_message: bool) -> 
             if send_message {
                 send_error_message(slicer_error)
             } else {
-                show_error_message(slicer_error)
+                error!("Error: {:?}", slicer_error);
             }
             std::process::exit(-1);
         }

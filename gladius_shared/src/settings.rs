@@ -25,6 +25,9 @@ pub struct Settings {
     ///The support settings, if None no support will be generated
     pub support: Option<SupportSettings>,
 
+    ///The magic overhangs settings, if None no attempt will be made to print horizontally
+    pub magic_overhang: Option<MagicOverhangSettings>,
+
     ///Diameter of the nozzle in mm
     pub nozzle_diameter: f64,
 
@@ -109,6 +112,8 @@ impl Default for Settings {
             retract_speed: 35.0,
 
             support: None,
+
+            magic_overhang: None,
 
             speed: MovementParameter {
                 inner_perimeter: 5.0,
@@ -359,6 +364,13 @@ pub struct SupportSettings {
     pub support_spacing: f64,
 }
 
+///Support settings
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct MagicOverhangSettings {
+    ///Ratio of the filament hanging over thin air (0.5 ~> half the extrusion is over the last line, 1 ~> filament is loose)
+    pub hang_ratio: f64,
+}
+
 ///The Settings for Skirt generation
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SkirtSettings {
@@ -388,6 +400,8 @@ pub struct PartialSettings {
     pub skirt: Option<SkirtSettings>,
     ///The support settings, if None no support will be generated
     pub support: Option<SupportSettings>,
+    ///The support settings, if None no support will be generated
+    pub magic_overhang: Option<MagicOverhangSettings>,
     ///Diameter of the nozzle in mm
     pub nozzle_diameter: Option<f64>,
 
@@ -502,6 +516,7 @@ impl PartialSettings {
             fan: self.fan.clone().or_else(|| other.fan.clone()),
             skirt: self.skirt.clone().or_else(|| other.skirt.clone()),
             support: self.support.clone().or_else(|| other.support.clone()),
+            magic_overhang: self.magic_overhang.clone().or_else(|| other.magic_overhang.clone()),
             nozzle_diameter: self.nozzle_diameter.or(other.nozzle_diameter),
             retract_length: self.retract_length.or(other.retract_length),
             retract_lift_z: self.retract_lift_z.or(other.retract_lift_z),
@@ -647,6 +662,7 @@ fn try_convert_partial_to_settings(part: PartialSettings) -> Result<Settings, St
         fan: part.fan.ok_or("fan")?,
         skirt: part.skirt,
         support: part.support,
+        magic_overhang: part.magic_overhang,
         nozzle_diameter: part.nozzle_diameter.ok_or("nozzle_diameter")?,
         retract_length: part.retract_length.ok_or("retract_length")?,
         retract_lift_z: part.retract_lift_z.ok_or("retract_lift_z")?,

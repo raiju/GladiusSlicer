@@ -13,7 +13,7 @@ use geo::coordinate_position::CoordPos;
 use geo::coordinate_position::CoordinatePosition;
 use geo::prelude::*;
 use geo::*;
-use gladius_shared::settings::SkirtSettings;
+use gladius_shared::settings::{MagicOverhangSettings, SkirtSettings};
 use gladius_shared::types::{Command, Move, MoveChain, MoveType, Slice};
 use itertools::Itertools;
 use log::{error, info};
@@ -26,7 +26,7 @@ pub trait Plotter {
     fn fill_solid_subtracted_area(&mut self, other: &MultiPolygon<f64>, layer_count: usize);
     fn fill_solid_bridge_area(&mut self, layer_below: &MultiPolygon<f64>);
     fn fill_solid_top_layer(&mut self, layer_above: &MultiPolygon<f64>, layer_count: usize);
-    fn fill_overhang_aware(&mut self, overhang: &MultiPolygon<f64>, connecting_surface: &MultiPolygon<f64>);
+    fn fill_overhang_aware(&mut self, overhang: &MultiPolygon<f64>, connecting_surface: &MultiPolygon<f64>, magic_overhang: &MagicOverhangSettings);
     fn generate_skirt(&mut self, convex_polygon: &Polygon<f64>, skirt_settings: &SkirtSettings);
     fn generate_brim(&mut self, entire_first_layer: MultiPolygon<f64>, brim_width: f64);
     fn order_chains(&mut self);
@@ -116,7 +116,7 @@ impl Plotter for Slice {
         self.remaining_area = self.remaining_area.difference_with(&solid_area)
     }
 
-    fn fill_overhang_aware(&mut self, below: &MultiPolygon<f64>, overhang: &MultiPolygon<f64>) {
+    fn fill_overhang_aware(&mut self, below: &MultiPolygon<f64>, overhang: &MultiPolygon<f64>, magic_overhang: &MagicOverhangSettings) {
         // When dealing with larger overhangs, get tricksy
 
         // TODO: Control overlap & extrusion rate
@@ -134,7 +134,7 @@ impl Plotter for Slice {
                 }
             }
 
-            connecting_surface = connecting_surface.offset_from(layer_settings.layer_width)
+            connecting_surface = connecting_surface.offset_from(layer_settings.layer_width * magic_overhang.hang_ratio)
                 .difference_with(&total_surface)
                 .difference_with(below)
                 .intersection_with(&self.remaining_area);
