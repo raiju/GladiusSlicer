@@ -124,13 +124,30 @@ impl Plotter for Slice {
         let mut connecting_surface = overhang.offset_from(layer_settings.layer_width)
             .intersection_with(&below);
 
+        let mut prevStartPointOpt: Option<Coordinate<f64>> = None;
         let mut total_surface = connecting_surface.clone();
         while !connecting_surface.is_empty() {
             for raw_polygon in connecting_surface.0.iter() {
                 let polygon = raw_polygon.simplify(&0.01);
 
                 if let Some(line_moves) = draw_as_line(&polygon, layer_settings, MoveType::FloatingOverhang) {
-                    self.fixed_chains.push(line_moves);
+                    let start_point = line_moves.start_point.clone();
+
+                    if let Some(prevStartPoint) = prevStartPointOpt {
+                        let mut combined_moves = vec![Move{
+                            end: start_point,
+                            width: layer_settings.layer_width,
+                            move_type: MoveType::OuterPerimeter,
+                        }];
+                        combined_moves.extend(line_moves.moves);
+                        self.fixed_chains.push(MoveChain {
+                            start_point: prevStartPoint,
+                            moves: combined_moves,
+                        });
+                    } else {
+                        self.fixed_chains.push(line_moves);
+                    }
+                    prevStartPointOpt = Some(start_point);
                 }
             }
 
