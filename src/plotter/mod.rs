@@ -14,6 +14,7 @@ use geo::coordinate_position::CoordinatePosition;
 use geo::prelude::*;
 use geo::*;
 use geo::coords_iter::CoordsIter;
+use geo_clipper::ClipperInt;
 use gladius_shared::settings::{OverhangSettings, SkirtSettings};
 use gladius_shared::types::{Command, Move, MoveChain, MoveType, Slice};
 use itertools::Itertools;
@@ -123,28 +124,36 @@ impl Plotter for Slice {
 
         // TODO: Control overlap & extrusion rate
         let layer_settings = &self.layer_settings;
-        let mut connecting_surface = overhang.offset_from(layer_settings.layer_width)
+        let starting_polygons = overhang.offset_from(layer_settings.layer_width)
             .intersection_with(&below);
 
-        let mut total_surface = connecting_surface.clone();
-        let mut i = 0;
-        while !connecting_surface.offset_from(-0.01).is_empty() {
-            for raw_polygon in connecting_surface.0.iter() {
-                let polygon = raw_polygon.simplify(&0.01);
+        let mut total_surface: MultiPolygon<f64> = MultiPolygon::from( Vec::<Polygon<f64>>::new());
 
-                // TODO: Dwell & extrusion multiplier
-                if let Some(line_moves) = draw_as_line(&polygon, layer_settings.layer_width, MoveType::FloatingOverhang) {
-                    self.fixed_chains.push(line_moves);
+        for starting_polygon in starting_polygons.iter() {
+            // I need to take some time to learn actual rust...
+            let mut wrapper = Vec::<Polygon<f64>>::new();
+            wrapper.push(starting_polygon.clone());
+            let mut connecting_surface: MultiPolygon<f64> =
+                MultiPolygon { 0: wrapper };
+
+            while !connecting_surface.offset_from(-0.01).is_empty() {
+                for raw_polygon in connecting_surface.0.iter() {
+                    let polygon = raw_polygon.simplify(&0.01);
+
+                    // TODO: Dwell & extrusion multiplier
+                    if let Some(line_moves) = draw_as_line(&polygon, layer_settings.layer_width * overhang_settings.extrusion_multiplier * (1.0 - overhang_settings.overlap_ratio), MoveType::FloatingOverhang) {
+                        self.fixed_chains.push(line_moves);
+                    }
                 }
-            }
 
-            connecting_surface = connecting_surface.offset_from(layer_settings.layer_width * (1.0 - overhang_settings.overlap_ratio))
-                .difference_with(&total_surface)
-                .difference_with(below)
-                .intersection_with(&self.remaining_area);
-            total_surface = total_surface.union_with(&connecting_surface);
-            // Account for minor computation errors
-            connecting_surface = connecting_surface.offset_from(-0.01);
+                connecting_surface = connecting_surface.offset_from(layer_settings.layer_width * (1.0 - overhang_settings.overlap_ratio))
+                    .difference_with(&total_surface)
+                    .difference_with(below)
+                    .intersection_with(&self.remaining_area);
+                total_surface = total_surface.union_with(&connecting_surface);
+                // Account for minor computation errors
+                connecting_surface = connecting_surface.offset_from(-0.01);
+            }
         }
 
         self.remaining_area = self.remaining_area.difference_with(&total_surface);

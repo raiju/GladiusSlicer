@@ -5,6 +5,8 @@ use crate::utils::display_state_update;
 use crate::{Object, PolygonOperations, Settings, Slice};
 use geo::prelude::*;
 use geo::*;
+use geo::Geometry::Line;
+use itertools::Itertools;
 use log::error;
 use gladius_shared::error::SlicerErrors;
 use gladius_shared::types::PartialInfillTypes;
@@ -258,9 +260,9 @@ impl SlicePass for TopAndBottomLayersPass {
         Ok(())
     }
 }
-pub struct MagicOverhangPass {}
+pub struct OverhangPass {}
 
-impl SlicePass for MagicOverhangPass {
+impl SlicePass for OverhangPass {
     fn pass(
         slices: &mut Vec<Slice>,
         settings: &Settings,

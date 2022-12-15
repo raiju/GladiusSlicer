@@ -31,7 +31,6 @@ impl PolygonOperations for MultiPolygon<f64> {
     fn union_with(&self, other: &MultiPolygon<f64>) -> MultiPolygon<f64> {
         self.union(other, 100000.0)
     }
-
     fn xor_with(&self, other: &MultiPolygon<f64>) -> MultiPolygon<f64> {
         self.union(other, 100000.0)
     }

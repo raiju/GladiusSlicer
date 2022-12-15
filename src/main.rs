@@ -196,7 +196,7 @@ fn generate_moves(
         .map(|object| {
             let slices = &mut object.layers;
 
-            MagicOverhangPass::pass(slices, settings, send_messages)?;
+            OverhangPass::pass(slices, settings, send_messages)?;
 
             //Shrink layer
             ShrinkPass::pass(slices, settings, send_messages)?;

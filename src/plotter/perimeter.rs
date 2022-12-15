@@ -1,3 +1,4 @@
+use std::io::BufRead;
 use gladius_shared::settings::LayerSettings;
 use gladius_shared::types::{Move, MoveChain, MoveType};
 
@@ -116,11 +117,12 @@ fn extract_line_poly_as_stroke(
 ) -> Vec<Coordinate<f64>> {
     let mut resulting_line: Vec<Coordinate<f64>> = vec![];
 
-    // Exterior is wrong here, but it does the job for now by choosing one arbitrary side (so it
-    // offsets us slightly)
+    // HACKHACK: Exterior is wrong here, but it does the job for now by choosing one arbitrary side
+    // (so it offsets us slightly)
     resulting_line.extend(poly.exterior().lines()
         .map(|line| line.start)
         .collect_vec());
+    resulting_line.push(poly.exterior().lines().collect_vec().first().unwrap().start);
 
 
     resulting_line
