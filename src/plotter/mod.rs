@@ -13,11 +13,13 @@ use geo::coordinate_position::CoordPos;
 use geo::coordinate_position::CoordinatePosition;
 use geo::prelude::*;
 use geo::*;
-use gladius_shared::settings::{MagicOverhangSettings, SkirtSettings};
+use geo::coords_iter::CoordsIter;
+use gladius_shared::settings::{OverhangSettings, SkirtSettings};
 use gladius_shared::types::{Command, Move, MoveChain, MoveType, Slice};
 use itertools::Itertools;
 use log::{error, info};
 use ordered_float::OrderedFloat;
+use crate::utils::dump_as_svg;
 
 pub trait Plotter {
     fn slice_perimeters_into_chains(&mut self, number_of_perimeters: usize);
@@ -26,7 +28,7 @@ pub trait Plotter {
     fn fill_solid_subtracted_area(&mut self, other: &MultiPolygon<f64>, layer_count: usize);
     fn fill_solid_bridge_area(&mut self, layer_below: &MultiPolygon<f64>);
     fn fill_solid_top_layer(&mut self, layer_above: &MultiPolygon<f64>, layer_count: usize);
-    fn fill_overhang_aware(&mut self, overhang: &MultiPolygon<f64>, connecting_surface: &MultiPolygon<f64>, magic_overhang: &MagicOverhangSettings);
+    fn fill_overhang_aware(&mut self, overhang: &MultiPolygon<f64>, connecting_surface: &MultiPolygon<f64>, overhang_settings: &OverhangSettings);
     fn generate_skirt(&mut self, convex_polygon: &Polygon<f64>, skirt_settings: &SkirtSettings);
     fn generate_brim(&mut self, entire_first_layer: MultiPolygon<f64>, brim_width: f64);
     fn order_chains(&mut self);
@@ -116,7 +118,7 @@ impl Plotter for Slice {
         self.remaining_area = self.remaining_area.difference_with(&solid_area)
     }
 
-    fn fill_overhang_aware(&mut self, below: &MultiPolygon<f64>, overhang: &MultiPolygon<f64>, magic_overhang: &MagicOverhangSettings) {
+    fn fill_overhang_aware(&mut self, below: &MultiPolygon<f64>, overhang: &MultiPolygon<f64>, overhang_settings: &OverhangSettings) {
         // When dealing with larger overhangs, get tricksy
 
         // TODO: Control overlap & extrusion rate
@@ -124,38 +126,25 @@ impl Plotter for Slice {
         let mut connecting_surface = overhang.offset_from(layer_settings.layer_width)
             .intersection_with(&below);
 
-        let mut prevStartPointOpt: Option<Coordinate<f64>> = None;
         let mut total_surface = connecting_surface.clone();
-        while !connecting_surface.is_empty() {
+        let mut i = 0;
+        while !connecting_surface.offset_from(-0.01).is_empty() {
             for raw_polygon in connecting_surface.0.iter() {
                 let polygon = raw_polygon.simplify(&0.01);
 
-                if let Some(line_moves) = draw_as_line(&polygon, layer_settings, MoveType::FloatingOverhang) {
-                    let start_point = line_moves.start_point.clone();
-
-                    if let Some(prevStartPoint) = prevStartPointOpt {
-                        let mut combined_moves = vec![Move{
-                            end: start_point,
-                            width: layer_settings.layer_width,
-                            move_type: MoveType::OuterPerimeter,
-                        }];
-                        combined_moves.extend(line_moves.moves);
-                        self.fixed_chains.push(MoveChain {
-                            start_point: prevStartPoint,
-                            moves: combined_moves,
-                        });
-                    } else {
-                        self.fixed_chains.push(line_moves);
-                    }
-                    prevStartPointOpt = Some(start_point);
+                // TODO: Dwell & extrusion multiplier
+                if let Some(line_moves) = draw_as_line(&polygon, layer_settings.layer_width, MoveType::FloatingOverhang) {
+                    self.fixed_chains.push(line_moves);
                 }
             }
 
-            connecting_surface = connecting_surface.offset_from(layer_settings.layer_width * magic_overhang.hang_ratio)
+            connecting_surface = connecting_surface.offset_from(layer_settings.layer_width * (1.0 - overhang_settings.overlap_ratio))
                 .difference_with(&total_surface)
                 .difference_with(below)
                 .intersection_with(&self.remaining_area);
             total_surface = total_surface.union_with(&connecting_surface);
+            // Account for minor computation errors
+            connecting_surface = connecting_surface.offset_from(-0.01);
         }
 
         self.remaining_area = self.remaining_area.difference_with(&total_surface);

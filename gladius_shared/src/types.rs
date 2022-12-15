@@ -559,8 +559,8 @@ impl MoveChain {
                                 bed_temp: None,
                                 extruder_temp: None,
                                 fan_speed: None,
-                                movement_speed: Some(settings.speed.outer_perimeter),
-                                acceleration: Some(settings.acceleration.outer_perimeter),
+                                movement_speed: Some(settings.speed.overhang),
+                                acceleration: Some(settings.acceleration.overhang),
                                 retract: Some(false),
                             },
                         });

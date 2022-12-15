@@ -91,39 +91,41 @@ pub fn inset_polygon_recursive(
 
 pub fn draw_as_line(
     poly: &Polygon<f64>,
-    settings: &LayerSettings,
+    layer_width: f64,
     move_type: MoveType,
 ) -> Option<MoveChain> {
 
     // TODO: Draw line(s) of one layer-width that approximates polygon
 
     // Naive simple approach/cheat to prove out overhang.stl before going to MAT/SAT
-    let boundary = poly.bounding_rect()?;
+    let result = extract_line_poly_as_stroke(poly, layer_width);
 
-    if boundary.width() > boundary.height() {
-        Some(MoveChain {
-            start_point: Coordinate { x: boundary.min().x, y: boundary.min().y + boundary.height() / 2.0 },
-            moves: vec![
-                Move {
-                    end: Coordinate { x: boundary.max().x, y: boundary.max().y - boundary.height() / 2.0 },
-                    width: settings.layer_width,
-                    move_type,
-                }
-            ],
-        })
-    } else {
-        Some(MoveChain {
-            start_point: Coordinate { x: boundary.min().x + boundary.width() / 2.0, y: boundary.min().y },
-            moves: vec![
-                Move {
-                    end: Coordinate { x: boundary.max().x - boundary.width() / 2.0, y: boundary.max().y },
-                    width: settings.layer_width,
-                    move_type,
-                }
-            ],
-        })
-    }
+    Some(MoveChain {
+        start_point: *result.first().unwrap(),
+        moves: result[1..]
+            .iter()
+            .map(|c| Move { end: *c, width: layer_width, move_type })
+            .collect_vec()
+    })
 }
+
+
+fn extract_line_poly_as_stroke(
+    poly: &Polygon<f64>,
+    layer_width: f64,
+) -> Vec<Coordinate<f64>> {
+    let mut resulting_line: Vec<Coordinate<f64>> = vec![];
+
+    // Exterior is wrong here, but it does the job for now by choosing one arbitrary side (so it
+    // offsets us slightly)
+    resulting_line.extend(poly.exterior().lines()
+        .map(|line| line.start)
+        .collect_vec());
+
+
+    resulting_line
+}
+
 
 fn collapse_move_chains(move_chains: Vec<MoveChain>) -> Option<MoveChain> {
     move_chains

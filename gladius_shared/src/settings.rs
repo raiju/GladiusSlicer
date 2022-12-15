@@ -26,7 +26,7 @@ pub struct Settings {
     pub support: Option<SupportSettings>,
 
     ///The magic overhangs settings, if None no attempt will be made to print horizontally
-    pub magic_overhang: Option<MagicOverhangSettings>,
+    pub overhang: Option<OverhangSettings>,
 
     ///Diameter of the nozzle in mm
     pub nozzle_diameter: f64,
@@ -113,7 +113,7 @@ impl Default for Settings {
 
             support: None,
 
-            magic_overhang: None,
+            overhang: None,
 
             speed: MovementParameter {
                 inner_perimeter: 5.0,
@@ -122,6 +122,7 @@ impl Default for Settings {
                 solid_infill: 200.0,
                 infill: 200.0,
                 travel: 180.0,
+                overhang: 5.0,
                 bridge: 30.0,
                 support: 50.0,
             },
@@ -132,6 +133,7 @@ impl Default for Settings {
                 solid_infill: 1000.0,
                 infill: 1000.0,
                 travel: 1000.0,
+                overhang: 800.0,
                 bridge: 1000.0,
                 support: 1000.0,
             },
@@ -180,6 +182,7 @@ impl Default for Settings {
                         solid_infill: 20.0,
                         infill: 20.0,
                         travel: 5.0,
+                        overhang: 5.0,
                         bridge: 20.0,
                         support: 20.0,
                     }),
@@ -289,6 +292,9 @@ pub struct MovementParameter {
     ///Value for travel moves
     pub travel: f64,
 
+    ///Value for overhangs
+    pub overhang: f64,
+
     ///Value for bridging
     pub bridge: f64,
 
@@ -366,9 +372,13 @@ pub struct SupportSettings {
 
 ///Support settings
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct MagicOverhangSettings {
-    ///Ratio of the filament hanging over thin air (0.5 ~> half the extrusion is over the last line, 1 ~> filament is loose)
-    pub hang_ratio: f64,
+pub struct OverhangSettings {
+    ///Ratio of the filament overlapping with the previous line (0 -> normal position, 1 -> identical position)
+    pub overlap_ratio: f64,
+    ///Amount to multiply the extrusion by to ensure enough gets extruded
+    pub extrusion_multiplier: f64,
+    ///Time in milliseconds to dwell between layer lines
+    pub dwell_time_millis: i32,
 }
 
 ///The Settings for Skirt generation
@@ -401,7 +411,7 @@ pub struct PartialSettings {
     ///The support settings, if None no support will be generated
     pub support: Option<SupportSettings>,
     ///The support settings, if None no support will be generated
-    pub magic_overhang: Option<MagicOverhangSettings>,
+    pub overhang: Option<OverhangSettings>,
     ///Diameter of the nozzle in mm
     pub nozzle_diameter: Option<f64>,
 
@@ -516,7 +526,7 @@ impl PartialSettings {
             fan: self.fan.clone().or_else(|| other.fan.clone()),
             skirt: self.skirt.clone().or_else(|| other.skirt.clone()),
             support: self.support.clone().or_else(|| other.support.clone()),
-            magic_overhang: self.magic_overhang.clone().or_else(|| other.magic_overhang.clone()),
+            overhang: self.overhang.clone().or_else(|| other.overhang.clone()),
             nozzle_diameter: self.nozzle_diameter.or(other.nozzle_diameter),
             retract_length: self.retract_length.or(other.retract_length),
             retract_lift_z: self.retract_lift_z.or(other.retract_lift_z),
@@ -662,7 +672,7 @@ fn try_convert_partial_to_settings(part: PartialSettings) -> Result<Settings, St
         fan: part.fan.ok_or("fan")?,
         skirt: part.skirt,
         support: part.support,
-        magic_overhang: part.magic_overhang,
+        overhang: part.overhang,
         nozzle_diameter: part.nozzle_diameter.ok_or("nozzle_diameter")?,
         retract_length: part.retract_length.ok_or("retract_length")?,
         retract_lift_z: part.retract_lift_z.ok_or("retract_lift_z")?,
